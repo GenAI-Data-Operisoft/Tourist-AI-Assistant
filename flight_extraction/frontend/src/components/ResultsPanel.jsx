@@ -14,32 +14,28 @@ function ResultsPanel({ results }) {
         type: 'FLIGHT',
         title: 'Boarding Pass',
         identifier1: result.pnr,
-        identifier2: `${result.flight?.carrier}${result.flight?.flight_number}`,
-        confidence: result._metadata?.confidence || 0
+        identifier2: `${result.flight?.carrier}${result.flight?.flight_number}`
       };
     } else if (docType === 'hotel_voucher') {
       return {
         type: 'HOTEL',
         title: 'Hotel Voucher',
         identifier1: result.confirmation_number,
-        identifier2: result.hotel?.name,
-        confidence: result._metadata?.confidence || 0
+        identifier2: result.hotel?.name
       };
     } else if (docType === 'train_ticket') {
       return {
         type: 'TRAIN',
         title: 'Train Ticket',
         identifier1: result.pnr,
-        identifier2: result.train?.train_number,
-        confidence: result._metadata?.confidence || 0
+        identifier2: result.train?.train_number
       };
     } else if (docType === 'flight_itinerary') {
       return {
         type: 'FLIGHT',
         title: 'Flight Ticket',
         identifier1: result.pnr,
-        identifier2: result.segments?.[0]?.flight_number,
-        confidence: result._metadata?.confidence || 0
+        identifier2: result.segments?.[0]?.flight_number
       };
     } else if (result.bookingIdentity) {
       // Merged booking
@@ -47,8 +43,7 @@ function ResultsPanel({ results }) {
         type: result.bookingIdentity.type,
         title: `${result.bookingIdentity.type} Booking`,
         identifier1: result.bookingIdentity.pnr || result.bookingIdentity.bookingReference,
-        identifier2: result.bookingIdentity.flightNumber || result.bookingIdentity.trainNumber || result.bookingIdentity.hotelName,
-        confidence: result.reasoningInsights?.averageConfidence || 0
+        identifier2: result.bookingIdentity.flightNumber || result.bookingIdentity.trainNumber || result.bookingIdentity.hotelName
       };
     }
     
@@ -56,8 +51,7 @@ function ResultsPanel({ results }) {
       type: 'UNKNOWN',
       title: 'Unknown Document',
       identifier1: '',
-      identifier2: '',
-      confidence: 0
+      identifier2: ''
     };
   };
 
@@ -316,11 +310,6 @@ function ResultsPanel({ results }) {
 
               {isExpanded && (
                 <div className="result-content">
-                  {/* Confidence Badge */}
-                  <div className="confidence-section">
-                    {getConfidenceBadge(docInfo.confidence)}
-                  </div>
-
                   {/* Identity Info */}
                   <div className="identity-section">
                     {docInfo.type === 'FLIGHT' && (
@@ -342,36 +331,6 @@ function ResultsPanel({ results }) {
                       </>
                     )}
                   </div>
-
-                  {/* Issues */}
-                  {insights.issues && insights.issues.length > 0 && (
-                    <div className="insights-section issues">
-                      <div className="insights-header">
-                        <AlertTriangle size={16} />
-                        <span>Issues</span>
-                      </div>
-                      <ul>
-                        {insights.issues.map((issue, i) => (
-                          <li key={i}>{issue}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* Suggestions */}
-                  {insights.suggestions && insights.suggestions.length > 0 && (
-                    <div className="insights-section suggestions">
-                      <div className="insights-header">
-                        <Lightbulb size={16} />
-                        <span>Suggestions</span>
-                      </div>
-                      <ul>
-                        {insights.suggestions.map((suggestion, i) => (
-                          <li key={i}>{suggestion}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
 
                   {/* Boarding Pass specific display */}
                   {result.document_type === 'boarding_pass' && (
