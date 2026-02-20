@@ -55,67 +55,94 @@ def process_files(pdf_paths: list[str]) -> list[dict]:
 
         flight_groups[flight_key].append(data)
 
-    # 2️⃣ Merge per booking/trip
+    # 2️⃣ Merge per booking/trip OR return standalone
     results = []
 
     for (identifier1, identifier2, booking_type), docs in flight_groups.items():
         # Get actual document type from first doc
         actual_doc_type = docs[0].get("documentType", "UNKNOWN") if docs else "UNKNOWN"
         
-        merged = merge_entities(docs, actual_doc_type)
-
-        # Set identity based on booking type
-        if booking_type == "FLIGHT":
-            merged["bookingIdentity"] = {
-                "type": "FLIGHT",
-                "pnr": identifier1,
-                "flightNumber": identifier2
+        # Check if this is a standalone document type (single document, no merging needed)
+        is_standalone = (
+            len(docs) == 1 and 
+            actual_doc_type in ["BOARDING_PASS", "HOTEL_BOOKING", "TRAIN_TICKET"]
+        )
+        
+        if is_standalone:
+            # Return standalone document in its EXACT original structure
+            doc = docs[0]
+            result = doc.copy()
+            
+            # Remove internal fields
+            result.pop("source", None)
+            result.pop("documentType", None)
+            result.pop("reasoning", None)
+            
+            # Add metadata separately (not mixed with main data)
+            reasoning = doc.get("reasoning", {})
+            result["_metadata"] = {
+                "confidence": reasoning.get("confidence", 0),
+                "issues": reasoning.get("issues", []),
+                "suggestions": reasoning.get("suggestions", [])
             }
-        elif booking_type == "TRAIN":
-            merged["bookingIdentity"] = {
-                "type": "TRAIN",
-                "pnr": identifier1,
-                "trainNumber": identifier2
-            }
-        elif booking_type == "HOTEL":
-            merged["bookingIdentity"] = {
-                "type": "HOTEL",
-                "bookingReference": identifier1,
-                "hotelName": identifier2
-            }
+            
+            results.append(result)
         else:
-            merged["bookingIdentity"] = {
-                "type": "UNKNOWN",
-                "identifier1": identifier1,
-                "identifier2": identifier2
+            # Merge multiple related documents
+            merged = merge_entities(docs, actual_doc_type)
+
+            # Set identity based on booking type
+            if booking_type == "FLIGHT":
+                merged["bookingIdentity"] = {
+                    "type": "FLIGHT",
+                    "pnr": identifier1,
+                    "flightNumber": identifier2
+                }
+            elif booking_type == "TRAIN":
+                merged["bookingIdentity"] = {
+                    "type": "TRAIN",
+                    "pnr": identifier1,
+                    "trainNumber": identifier2
+                }
+            elif booking_type == "HOTEL":
+                merged["bookingIdentity"] = {
+                    "type": "HOTEL",
+                    "bookingReference": identifier1,
+                    "hotelName": identifier2
+                }
+            else:
+                merged["bookingIdentity"] = {
+                    "type": "UNKNOWN",
+                    "identifier1": identifier1,
+                    "identifier2": identifier2
+                }
+
+            merged["documentsUsed"] = [
+                d.get("documentType") for d in docs
+            ]
+            
+            # Aggregate reasoning insights
+            all_issues = []
+            all_suggestions = []
+            avg_confidence = 0
+            
+            for doc in docs:
+                if "reasoning" in doc:
+                    r = doc["reasoning"]
+                    all_issues.extend(r.get("issues", []))
+                    all_suggestions.extend(r.get("suggestions", []))
+                    avg_confidence += r.get("confidence", 0)
+            
+            if docs:
+                avg_confidence = avg_confidence / len(docs)
+            
+            merged["reasoningInsights"] = {
+                "averageConfidence": round(avg_confidence, 2),
+                "issues": list(set(all_issues)),
+                "suggestions": list(set(all_suggestions))
             }
 
-        merged["documentsUsed"] = [
-            d.get("documentType") for d in docs
-        ]
-        
-        # Aggregate reasoning insights
-        all_issues = []
-        all_suggestions = []
-        avg_confidence = 0
-        
-        for doc in docs:
-            if "reasoning" in doc:
-                r = doc["reasoning"]
-                all_issues.extend(r.get("issues", []))
-                all_suggestions.extend(r.get("suggestions", []))
-                avg_confidence += r.get("confidence", 0)
-        
-        if docs:
-            avg_confidence = avg_confidence / len(docs)
-        
-        merged["reasoningInsights"] = {
-            "averageConfidence": round(avg_confidence, 2),
-            "issues": list(set(all_issues)),
-            "suggestions": list(set(all_suggestions))
-        }
-
-        results.append(merged)
+            results.append(merged)
 
     return results
 

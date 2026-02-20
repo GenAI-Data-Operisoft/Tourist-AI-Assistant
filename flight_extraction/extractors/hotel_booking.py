@@ -65,13 +65,22 @@ Text:
     )
 
     output = json.loads(resp["body"].read())
-    print(f"output : {output}")
-    output_text = output["content"][0]["text"]
-    match = re.search(r'\{[\s\S]*\}', output_text)
-
-    if match:
-        json_data = match.group()
-        print(json_data)
-        return json.loads(json_data)
+    response_text = output["content"][0]["text"]
     
-    return {}
+    # Extract JSON from response (handle markdown code blocks)
+    try:
+        # Try direct parsing first
+        return json.loads(response_text)
+    except json.JSONDecodeError:
+        # Try to extract JSON from markdown code blocks or text
+        json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
+        if json_match:
+            return json.loads(json_match.group(1))
+        
+        # Try to find JSON object in text
+        json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+        if json_match:
+            return json.loads(json_match.group(0))
+        
+        # If all fails, raise error with the actual response
+        raise ValueError(f"Could not parse JSON from response: {response_text[:200]}")

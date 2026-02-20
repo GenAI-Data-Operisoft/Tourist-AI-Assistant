@@ -5,7 +5,9 @@ import DocumentViewer from './components/DocumentViewer';
 import ResultsPanel from './components/ResultsPanel';
 import './App.css';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = 'http://localhost:8001';
+// const API_BASE = 'http://13.201.173.21:8001';
+
 
 function App() {
   const [files, setFiles] = useState([]);
@@ -16,6 +18,7 @@ function App() {
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [processingStatus, setProcessingStatus] = useState(null);
   const [fileErrors, setFileErrors] = useState([]);
+  const [fileMetadata, setFileMetadata] = useState([]);
 
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
@@ -98,6 +101,11 @@ function App() {
 
       setResults(response.data.results);
       
+      // Store file metadata for document viewer
+      if (response.data.files) {
+        setFileMetadata(response.data.files);
+      }
+      
       // Handle errors from individual files
       if (response.data.errors && response.data.errors.length > 0) {
         setFileErrors(response.data.errors);
@@ -127,6 +135,7 @@ function App() {
     setSelectedDocument(null);
     setFileErrors([]);
     setProcessingStatus(null);
+    setFileMetadata([]);
   };
 
   return (
@@ -247,6 +256,7 @@ function App() {
             <div className="split-view">
               <DocumentViewer
                 files={files}
+                fileMetadata={fileMetadata}
                 selectedDocument={selectedDocument}
                 onDocumentSelect={setSelectedDocument}
               />

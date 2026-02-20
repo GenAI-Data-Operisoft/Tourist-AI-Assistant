@@ -6,7 +6,8 @@ from pydantic import BaseModel
 import tempfile
 import os
 import boto3
-from typing import List, Optional
+from botocore.config import Config
+from typing import List, Optional, Tuple
 from main import process_files
 
 app = FastAPI(title="Travel Document Extractor API")
@@ -14,13 +15,20 @@ app = FastAPI(title="Travel Document Extractor API")
 # CORS middleware for React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=["http://localhost:3000", 
+               "http://localhost:5173", 
+               "http://13.201.173.21:8001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-s3_client = boto3.client('s3')
+# Configure S3 client with signature version 4
+s3_config = Config(
+    signature_version='s3v4',
+    region_name=os.environ.get('AWS_DEFAULT_REGION', 'us-east-1')
+)
+s3_client = boto3.client('s3', config=s3_config)
 
 class S3LinkRequest(BaseModel):
     s3_urls: List[str]
@@ -28,7 +36,7 @@ class S3LinkRequest(BaseModel):
 class MixedRequest(BaseModel):
     s3_urls: Optional[List[str]] = []
 
-def download_from_s3(s3_url: str) -> tuple[str, dict]:
+def download_from_s3(s3_url: str) -> Tuple[str, dict]:
     """Download file from S3 and return local temp path with metadata"""
     try:
         # Parse S3 URL (s3://bucket/key or https://bucket.s3.region.amazonaws.com/key)
@@ -42,23 +50,48 @@ def download_from_s3(s3_url: str) -> tuple[str, dict]:
             bucket = parts[0].replace("https://", "")
             key = parts[1].split("/", 1)[1] if "/" in parts[1] else ""
         
+        # Get bucket region
+        try:
+            bucket_location = s3_client.get_bucket_location(Bucket=bucket)
+            bucket_region = bucket_location['LocationConstraint']
+            # LocationConstraint is None for us-east-1
+            if bucket_region is None:
+                bucket_region = 'us-east-1'
+        except Exception as e:
+            print(f"Could not determine bucket region: {e}")
+            bucket_region = 'ap-south-1'  # Default to your region
+        
+        # Create region-specific S3 client with same credentials
+        # This ensures session tokens are properly included
+        session = boto3.Session()
+        s3_regional_client = session.client(
+            's3',
+            region_name=bucket_region,
+            config=Config(signature_version='s3v4')
+        )
+        
         # Get file extension from key
         file_ext = os.path.splitext(key)[1] or ".pdf"
         
         # Download to temp file
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=file_ext)
-        s3_client.download_fileobj(bucket, key, temp_file)
+        s3_regional_client.download_fileobj(bucket, key, temp_file)
         temp_file.close()
         
         # Get file metadata
         file_name = os.path.basename(key)
         file_size = os.path.getsize(temp_file.name)
         
+        # Don't use presigned URLs - they fail with temporary credentials
+        # Instead, we'll serve files through a backend proxy endpoint
         metadata = {
             "name": file_name,
             "url": s3_url,
+            "bucket": bucket,
+            "key": key,
             "size": file_size,
-            "type": file_ext.replace(".", "").upper()
+            "type": file_ext.replace(".", "").upper(),
+            "region": bucket_region
         }
         
         return temp_file.name, metadata
@@ -68,6 +101,51 @@ def download_from_s3(s3_url: str) -> tuple[str, dict]:
 @app.get("/")
 def root():
     return {"message": "Travel Document Extractor API", "status": "running"}
+
+@app.get("/s3-proxy/{bucket}/{key:path}")
+async def s3_proxy(bucket: str, key: str):
+    """Proxy endpoint to serve S3 files through backend (works with temporary credentials)"""
+    from fastapi.responses import StreamingResponse
+    import io
+    
+    try:
+        # Get bucket region
+        try:
+            bucket_location = s3_client.get_bucket_location(Bucket=bucket)
+            bucket_region = bucket_location['LocationConstraint']
+            if bucket_region is None:
+                bucket_region = 'us-east-1'
+        except Exception as e:
+            print(f"Could not determine bucket region: {e}")
+            bucket_region = 'ap-south-1'
+        
+        # Create region-specific client
+        session = boto3.Session()
+        s3_regional_client = session.client(
+            's3',
+            region_name=bucket_region,
+            config=Config(signature_version='s3v4')
+        )
+        
+        # Get file from S3
+        response = s3_regional_client.get_object(Bucket=bucket, Key=key)
+        file_stream = response['Body']
+        
+        # Determine content type
+        file_ext = os.path.splitext(key)[1].lower()
+        content_type = 'application/pdf' if file_ext == '.pdf' else f'image/{file_ext.replace(".", "")}'
+        
+        # Stream the file
+        return StreamingResponse(
+            io.BytesIO(file_stream.read()),
+            media_type=content_type,
+            headers={
+                "Content-Disposition": "inline",
+                "Cache-Control": "public, max-age=3600"
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Failed to fetch S3 file: {str(e)}")
 
 @app.post("/extract/upload")
 async def extract_from_upload(files: List[UploadFile] = File(...)):
@@ -134,7 +212,9 @@ async def extract_from_s3(request: S3LinkRequest):
                 file_metadata.append({
                     **metadata,
                     "index": idx,
-                    "status": "success"
+                    "status": "success",
+                    "source": "s3",
+                    "url": s3_url  # Include S3 URL for frontend display
                 })
             except HTTPException as e:
                 download_errors.append({
@@ -286,4 +366,4 @@ async def extract_mixed(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)

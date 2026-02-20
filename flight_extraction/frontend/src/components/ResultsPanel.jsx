@@ -27,8 +27,8 @@ function ResultsPanel({ results }) {
       return {
         type: 'TRAIN',
         title: 'Train Ticket',
-        identifier1: result.pnr,
-        identifier2: result.train?.train_number
+        identifier1: result.ticket_reference,
+        identifier2: result.journey?.train_number
       };
     } else if (docType === 'flight_itinerary') {
       return {
@@ -130,7 +130,7 @@ function ResultsPanel({ results }) {
     );
   };
 
-  const renderPassengers = (passengers) => {
+  const renderPassengers = (passengers, docType = null) => {
     if (!passengers || passengers.length === 0) return null;
     
     return (
@@ -140,10 +140,17 @@ function ResultsPanel({ results }) {
           <div key={idx} className="passenger-card">
             <div className="passenger-header">Passenger {idx + 1}</div>
             <div className="fields-grid">
-              {renderField('Title', passenger.title)}
-              {renderField('First Name', passenger.first_name)}
-              {renderField('Last Name', passenger.last_name)}
-              {renderField('Ticket Number', passenger.ticket_number)}
+              {/* Train ticket passengers have full_name */}
+              {passenger.full_name && renderField('Full Name', passenger.full_name)}
+              {passenger.passenger_type && renderField('Passenger Type', passenger.passenger_type)}
+              {passenger.id_number_masked && renderField('ID Number', passenger.id_number_masked)}
+              
+              {/* Flight ticket passengers have first_name/last_name */}
+              {passenger.title && renderField('Title', passenger.title)}
+              {passenger.first_name && renderField('First Name', passenger.first_name)}
+              {passenger.last_name && renderField('Last Name', passenger.last_name)}
+              {passenger.ticket_number && renderField('Ticket Number', passenger.ticket_number)}
+              
               {passenger.frequent_flyer && (
                 <>
                   {renderField('FF Program', passenger.frequent_flyer.program)}
@@ -369,6 +376,47 @@ function ResultsPanel({ results }) {
                       {result.passengers && renderPassengers(result.passengers)}
                       {result.segments && renderSegments(result.segments)}
                       {result.fare && renderSection('Fare', result.fare)}
+                    </>
+                  )}
+
+                  {/* Train Ticket specific display */}
+                  {result.document_type === 'train_ticket' && (
+                    <>
+                      {result.operator && renderSection('Operator', result.operator)}
+                      {result.passengers && renderPassengers(result.passengers)}
+                      {result.journey && (
+                        <div className="data-section">
+                          <h4>Journey Details</h4>
+                          <div className="fields-grid">
+                            {renderField('Train Number', result.journey.train_number)}
+                            {renderField('Service Name', result.journey.service_name)}
+                            
+                            {result.journey.departure && (
+                              <div className="nested-section">
+                                <div className="nested-title">Departure</div>
+                                {renderField('Station', result.journey.departure.station_name)}
+                                {renderField('Station Code', result.journey.departure.station_code)}
+                                {renderField('Platform', result.journey.departure.platform)}
+                                {renderField('Time', result.journey.departure.datetime_local)}
+                              </div>
+                            )}
+                            
+                            {result.journey.arrival && (
+                              <div className="nested-section">
+                                <div className="nested-title">Arrival</div>
+                                {renderField('Station', result.journey.arrival.station_name)}
+                                {renderField('Station Code', result.journey.arrival.station_code)}
+                                {renderField('Time', result.journey.arrival.datetime_local)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {result.class && renderSection('Class', result.class)}
+                      {result.seat_or_berth && renderSection('Seat/Berth', result.seat_or_berth)}
+                      {result.fare && renderSection('Fare', result.fare)}
+                      {result.barcode && result.barcode.format && renderSection('Barcode', result.barcode)}
+                      {result.policies && renderSection('Policies', result.policies)}
                     </>
                   )}
 
