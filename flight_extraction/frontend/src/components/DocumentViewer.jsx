@@ -48,8 +48,13 @@ function DocumentViewer({ files, fileMetadata, selectedDocument, onDocumentSelec
       isImage = currentFile.file.type.startsWith('image/');
       isPDF = currentFile.file.type === 'application/pdf';
     } else if (currentFile.type === 's3') {
-      // Use backend proxy endpoint - update port to 8001 for EC2
-      fileUrl = `http://localhost:8001/s3-proxy/${currentFile.bucket}/${currentFile.key}`;
+      // Use the same host as API_BASE from App.jsx
+      // Get the API base URL from window location or use the backend URL
+      const apiHost = window.location.hostname === 'localhost' 
+        ? 'http://localhost:8001' 
+        : `http://${window.location.hostname}:8001`;
+      
+      fileUrl = `${apiHost}/s3-proxy/${currentFile.bucket}/${currentFile.key}`;
       // Detect type from key
       const keyLower = currentFile.key.toLowerCase();
       isPDF = keyLower.endsWith('.pdf');

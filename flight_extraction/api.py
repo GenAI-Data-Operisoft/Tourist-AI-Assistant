@@ -1,5 +1,5 @@
 # api.py
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -15,9 +15,9 @@ app = FastAPI(title="Travel Document Extractor API")
 # CORS middleware for React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", 
-               "http://localhost:5173", 
-               "http://13.201.173.21:8001"],
+    allow_origins=[ "http://localhost:3000", 
+                    "http://localhost:5173", 
+                    "http://13.200.10.21:3001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -185,6 +185,9 @@ async def extract_from_upload(files: List[UploadFile] = File(...)):
         })
     
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"ERROR in extract_from_upload: {error_details}")
         raise HTTPException(status_code=500, detail=str(e))
     
     finally:
@@ -262,15 +265,26 @@ async def extract_from_s3(request: S3LinkRequest):
 
 @app.post("/extract/mixed")
 async def extract_mixed(
-    request: MixedRequest,
-    files: Optional[List[UploadFile]] = File(None)
+    files: Optional[List[UploadFile]] = File(None),
+    s3_urls: Optional[str] = Form(None)
 ):
     """Extract data from both uploaded files and S3 URLs"""
     temp_paths = []
     file_metadata = []
     errors = []
     
+    print(f"DEBUG: Received files: {len(files) if files else 0}")
+    print(f"DEBUG: Received s3_urls parameter: {s3_urls}")
+    
     try:
+        # Parse S3 URLs from JSON string
+        s3_url_list = []
+        if s3_urls:
+            import json as json_lib
+            s3_url_list = json_lib.loads(s3_urls)
+            print(f"DEBUG: Parsed S3 URLs: {s3_url_list}")
+        else:
+            print("DEBUG: No s3_urls received")
         # Handle uploaded files
         if files:
             for idx, file in enumerate(files, 1):
@@ -311,10 +325,10 @@ async def extract_mixed(
                     })
         
         # Handle S3 URLs one by one
-        if request.s3_urls:
-            for idx, s3_url in enumerate(request.s3_urls, 1):
+        if s3_url_list:
+            for idx, s3_url in enumerate(s3_url_list, 1):
                 try:
-                    print(f"Processing S3 link {idx}/{len(request.s3_urls)}: {s3_url}")
+                    print(f"Processing S3 link {idx}/{len(s3_url_list)}: {s3_url}")
                     temp_path, metadata = download_from_s3(s3_url)
                     temp_paths.append(temp_path)
                     file_metadata.append({

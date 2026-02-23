@@ -5,20 +5,21 @@ import DocumentViewer from './components/DocumentViewer';
 import ResultsPanel from './components/ResultsPanel';
 import './App.css';
 
-const API_BASE = 'http://localhost:8001';
-// const API_BASE = 'http://13.201.173.21:8001';
-
+// Determine API base URL based on environment
+const API_BASE = window.location.hostname === 'localhost' 
+  ? 'http://localhost:8001' 
+  : 'http://13.200.10.21:8001';
 
 function App() {
   const [files, setFiles] = useState([]);
   const [s3Links, setS3Links] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
+  const [fileMetadata, setFileMetadata] = useState([]);
   const [error, setError] = useState(null);
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [processingStatus, setProcessingStatus] = useState(null);
   const [fileErrors, setFileErrors] = useState([]);
-  const [fileMetadata, setFileMetadata] = useState([]);
 
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
@@ -68,10 +69,11 @@ function App() {
           message: `Processing ${files.length} uploaded file(s) and ${s3UrlArray.length} S3 link(s)...`
         });
         
+        // Add s3_urls as a form field (files already added above)
         formData.append('s3_urls', JSON.stringify(s3UrlArray));
+        
         response = await axios.post(`${API_BASE}/extract/mixed`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-          params: { s3_urls: s3UrlArray }
+          headers: { 'Content-Type': 'multipart/form-data' }
         });
       } else if (files.length > 0) {
         // Only files
@@ -101,7 +103,7 @@ function App() {
 
       setResults(response.data.results);
       
-      // Store file metadata for document viewer
+      // Store file metadata for S3 files
       if (response.data.files) {
         setFileMetadata(response.data.files);
       }
@@ -131,11 +133,11 @@ function App() {
     setFiles([]);
     setS3Links('');
     setResults(null);
+    setFileMetadata([]);
     setError(null);
     setSelectedDocument(null);
     setFileErrors([]);
     setProcessingStatus(null);
-    setFileMetadata([]);
   };
 
   return (
