@@ -9,3 +9,4 @@ faiss-cpu
 pymupdf
 pdf2image
 streamlit
+litellm

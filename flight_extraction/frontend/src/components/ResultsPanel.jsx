@@ -116,7 +116,7 @@ function ResultsPanel({ results }) {
                   {Object.entries(value).map(([subKey, subValue]) => {
                     if (typeof subValue === 'object') return null;
                     const label = subKey.replace(/([A-Z_])/g, ' $1').replace(/^./, str => str.toUpperCase());
-                    return renderField(label, subValue);
+                    return <div key={subKey}>{renderField(label, subValue)}</div>;
                   })}
                 </div>
               );

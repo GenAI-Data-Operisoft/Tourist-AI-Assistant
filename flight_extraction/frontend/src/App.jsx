@@ -8,7 +8,7 @@ import './App.css';
 // Determine API base URL based on environment
 const API_BASE = window.location.hostname === 'localhost' 
   ? 'http://localhost:8001' 
-  : 'http://13.200.10.21:8001';
+  : 'http://15.207.101.126:8001';
 
 function App() {
   const [files, setFiles] = useState([]);

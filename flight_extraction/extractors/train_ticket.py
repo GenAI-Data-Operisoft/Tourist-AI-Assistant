@@ -1,6 +1,5 @@
 # extractors/train_ticket.py
-import json
-from aws_clients import bedrock
+from llm_config import LLMConfig
 
 def extract_train_ticket(text: str) -> dict:
     prompt = f"""
@@ -73,40 +72,6 @@ Rules:
 Text:
 <<<{text}>>>
 """
-
-    body = {
-        "anthropic_version": "bedrock-2023-05-31",
-        "temperature": 0,
-        "max_tokens": 1500,
-        "messages": [{"role": "user", "content": prompt}]
-    }
-
-    resp = bedrock.invoke_model(
-        modelId="anthropic.claude-3-haiku-20240307-v1:0",
-        body=json.dumps(body),
-        contentType="application/json",
-        accept="application/json"
-    )
-
-    output = json.loads(resp["body"].read())
-    response_text = output["content"][0]["text"]
     
-    # Extract JSON from response (handle markdown code blocks)
-    try:
-        # Try direct parsing first
-        return json.loads(response_text)
-    except json.JSONDecodeError:
-        # Try to extract JSON from markdown code blocks or text
-        import re
-        json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
-        if json_match:
-            return json.loads(json_match.group(1))
-        
-        # Try to find JSON object in text
-        json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
-        if json_match:
-            return json.loads(json_match.group(0))
-        
-        # If all fails, raise error with the actual response
-        raise ValueError(f"Could not parse JSON from response: {response_text[:200]}")
-
+    response_text = LLMConfig.call_llm(prompt, max_tokens=1500)
+    return LLMConfig.extract_json(response_text)

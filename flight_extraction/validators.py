@@ -39,9 +39,17 @@ def get_flight_key(data: dict, doc_type: str) -> tuple:
             "FLIGHT"
         )
     elif doc_type == "TRAIN_TICKET":
+        # NEW train ticket structure
+        ticket_ref = data.get("ticket_reference", "").strip()
+        train_number = ""
+        
+        # Extract train number from journey object
+        if "journey" in data and isinstance(data["journey"], dict):
+            train_number = data["journey"].get("train_number", "").strip()
+        
         return (
-            data.get("pnr", "").strip(),
-            data.get("trainNumber", "").strip(),
+            ticket_ref,
+            train_number,
             "TRAIN"
         )
     elif doc_type == "HOTEL_BOOKING":
@@ -52,4 +60,3 @@ def get_flight_key(data: dict, doc_type: str) -> tuple:
         )
     else:
         return ("", "", doc_type)
-

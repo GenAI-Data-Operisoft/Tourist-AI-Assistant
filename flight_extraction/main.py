@@ -62,11 +62,15 @@ def process_files(pdf_paths: list[str]) -> list[dict]:
         # Get actual document type from first doc
         actual_doc_type = docs[0].get("documentType", "UNKNOWN") if docs else "UNKNOWN"
         
+        print(f"DEBUG: Processing group - doc_type={actual_doc_type}, num_docs={len(docs)}, booking_type={booking_type}")
+        
         # Check if this is a standalone document type (single document, no merging needed)
         is_standalone = (
             len(docs) == 1 and 
-            actual_doc_type in ["BOARDING_PASS", "HOTEL_BOOKING", "TRAIN_TICKET"]
+            actual_doc_type in ["BOARDING_PASS", "HOTEL_BOOKING", "TRAIN_TICKET", "TICKET"]
         )
+        
+        print(f"DEBUG: is_standalone={is_standalone}")
         
         if is_standalone:
             # Return standalone document in its EXACT original structure
@@ -77,14 +81,6 @@ def process_files(pdf_paths: list[str]) -> list[dict]:
             result.pop("source", None)
             result.pop("documentType", None)
             result.pop("reasoning", None)
-            
-            # Add metadata separately (not mixed with main data)
-            reasoning = doc.get("reasoning", {})
-            result["_metadata"] = {
-                "confidence": reasoning.get("confidence", 0),
-                "issues": reasoning.get("issues", []),
-                "suggestions": reasoning.get("suggestions", [])
-            }
             
             results.append(result)
         else:
@@ -120,27 +116,6 @@ def process_files(pdf_paths: list[str]) -> list[dict]:
             merged["documentsUsed"] = [
                 d.get("documentType") for d in docs
             ]
-            
-            # Aggregate reasoning insights
-            all_issues = []
-            all_suggestions = []
-            avg_confidence = 0
-            
-            for doc in docs:
-                if "reasoning" in doc:
-                    r = doc["reasoning"]
-                    all_issues.extend(r.get("issues", []))
-                    all_suggestions.extend(r.get("suggestions", []))
-                    avg_confidence += r.get("confidence", 0)
-            
-            if docs:
-                avg_confidence = avg_confidence / len(docs)
-            
-            merged["reasoningInsights"] = {
-                "averageConfidence": round(avg_confidence, 2),
-                "issues": list(set(all_issues)),
-                "suggestions": list(set(all_suggestions))
-            }
 
             results.append(merged)
 

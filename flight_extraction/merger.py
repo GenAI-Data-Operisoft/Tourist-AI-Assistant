@@ -190,26 +190,74 @@ def _merge_flight_entities(entities: list[dict]) -> dict:
     return final
 
 def _merge_train_entities(entities: list[dict]) -> dict:
+    """Merge train ticket documents (new structure)"""
     final = {
-        "passenger": {},
-        "train": {},
-        "seat": {},
-        "payment": {}
+        "document_type": "train_booking",
+        "ticket_reference": "",
+        "issue_date": "",
+        "operator": {},
+        "passengers": [],
+        "journey": {},
+        "class": {},
+        "seat_or_berth": {},
+        "fare": {},
+        "barcode": {},
+        "policies": {}
     }
 
-    for e in entities:
-        for k in e:
-            if e[k]:
-                if k in ["seatNumber", "coach", "class"]:
-                    final["seat"][k] = e[k]
-                elif k in ["fare", "bookingDate"]:
-                    final["payment"][k] = e[k]
-                elif k in ["pnr", "trainNumber", "trainName", "from", "to", "travelDate", "departureTime", "arrivalTime"]:
-                    final["train"][k] = e[k]
-                elif k == "passengerName":
-                    final["passenger"]["name"] = e[k]
+    # Track unique passengers by full_name
+    passenger_keys = set()
 
+    for e in entities:
+        # Merge ticket reference
+        if e.get("ticket_reference") and not final["ticket_reference"]:
+            final["ticket_reference"] = e["ticket_reference"]
+        
+        # Merge issue date
+        if e.get("issue_date") and not final["issue_date"]:
+            final["issue_date"] = e["issue_date"]
+        
+        # Merge operator info
+        if e.get("operator"):
+            final["operator"] = _deep_merge(final["operator"], e["operator"])
+        
+        # Merge passengers (avoid duplicates)
+        if e.get("passengers"):
+            for passenger in e["passengers"]:
+                passenger_key = passenger.get("full_name", "")
+                if passenger_key and passenger_key not in passenger_keys:
+                    passenger_keys.add(passenger_key)
+                    final["passengers"].append(passenger)
+        
+        # Merge journey info
+        if e.get("journey"):
+            final["journey"] = _deep_merge(final["journey"], e["journey"])
+        
+        # Merge class info
+        if e.get("class"):
+            final["class"] = _deep_merge(final["class"], e["class"])
+        
+        # Merge seat/berth info
+        if e.get("seat_or_berth"):
+            final["seat_or_berth"] = _deep_merge(final["seat_or_berth"], e["seat_or_berth"])
+        
+        # Merge fare info
+        if e.get("fare"):
+            final["fare"] = _deep_merge(final["fare"], e["fare"])
+        
+        # Merge barcode info
+        if e.get("barcode"):
+            final["barcode"] = _deep_merge(final["barcode"], e["barcode"])
+        
+        # Merge policies
+        if e.get("policies"):
+            final["policies"] = _deep_merge(final["policies"], e["policies"])
+
+    # Clean up empty fields
+    final = {k: v for k, v in final.items() if v}
+    
     return final
+
 
 def _merge_hotel_entities(entities: list[dict]) -> dict:
     """Merge hotel booking documents"""
