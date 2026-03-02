@@ -54,7 +54,7 @@ function DocumentViewer({ files, fileMetadata, selectedDocument, onDocumentSelec
       //   ? 'http://localhost:8001' 
       //   : `http://${window.location.hostname}:8001`;
       
-      const apiHost = '/api';
+      const apiHost = import.meta.env.VITE_API_BASE;
 
       fileUrl = `${apiHost}/s3-proxy/${currentFile.bucket}/${currentFile.key}`;
       // Detect type from key

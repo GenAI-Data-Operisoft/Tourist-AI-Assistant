@@ -10,7 +10,7 @@ import './App.css';
 //   ? 'http://localhost:8001' 
 //   : 'http://65.2.55.2:8001';
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 function App() {
   const [files, setFiles] = useState([]);
