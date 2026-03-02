@@ -8,6 +8,7 @@ from extractors.invoice import extract_invoice
 from extractors.ticket import extract_ticket
 from extractors.train_ticket import extract_train_ticket
 from extractors.hotel_booking import extract_hotel_booking
+from extractors.bus_ticket import extract_bus_ticket
 from merger import merge_entities
 from reasoning_agent import reason_about_extraction
 import validators
@@ -17,13 +18,12 @@ EXTRACTOR_MAP = {
     "INVOICE": extract_invoice,
     "TICKET": extract_ticket,
     "TRAIN_TICKET": extract_train_ticket,
-    "HOTEL_BOOKING": extract_hotel_booking
+    "HOTEL_BOOKING": extract_hotel_booking,
+    "BUS_TICKET": extract_bus_ticket
 }
 
 def process_files(pdf_paths: list[str]) -> list[dict]:
-    """
-    Process multiple PDFs and return one merged output per flight
-    """
+    """Process multiple PDFs and return one merged output per flight"""
     flight_groups = defaultdict(list)
 
     # 1️⃣ Extract + classify + extract entities + reasoning
@@ -35,14 +35,13 @@ def process_files(pdf_paths: list[str]) -> list[dict]:
             continue
 
         data = EXTRACTOR_MAP[doc_type](text)
-        
+
         # Apply reasoning agent
         reasoning = reason_about_extraction(data, doc_type, text)
-        
         data["source"] = source
         data["documentType"] = doc_type
         data["reasoning"] = reasoning
-        
+
         # Merge enriched data from reasoning agent
         if reasoning.get("enrichedData"):
             data.update(reasoning["enrichedData"])
@@ -57,31 +56,26 @@ def process_files(pdf_paths: list[str]) -> list[dict]:
 
     # 2️⃣ Merge per booking/trip OR return standalone
     results = []
-
     for (identifier1, identifier2, booking_type), docs in flight_groups.items():
         # Get actual document type from first doc
         actual_doc_type = docs[0].get("documentType", "UNKNOWN") if docs else "UNKNOWN"
-        
         print(f"DEBUG: Processing group - doc_type={actual_doc_type}, num_docs={len(docs)}, booking_type={booking_type}")
-        
+
         # Check if this is a standalone document type (single document, no merging needed)
         is_standalone = (
             len(docs) == 1 and 
-            actual_doc_type in ["BOARDING_PASS", "HOTEL_BOOKING", "TRAIN_TICKET", "TICKET"]
+            actual_doc_type in ["BOARDING_PASS", "HOTEL_BOOKING", "TRAIN_TICKET", "BUS_TICKET", "TICKET"]
         )
-        
         print(f"DEBUG: is_standalone={is_standalone}")
-        
+
         if is_standalone:
             # Return standalone document in its EXACT original structure
             doc = docs[0]
             result = doc.copy()
-            
             # Remove internal fields
             result.pop("source", None)
             result.pop("documentType", None)
             result.pop("reasoning", None)
-            
             results.append(result)
         else:
             # Merge multiple related documents
@@ -100,6 +94,12 @@ def process_files(pdf_paths: list[str]) -> list[dict]:
                     "pnr": identifier1,
                     "trainNumber": identifier2
                 }
+            elif booking_type == "BUS":
+                merged["bookingIdentity"] = {
+                    "type": "BUS",
+                    "ticketReference": identifier1,
+                    "serviceNumber": identifier2
+                }
             elif booking_type == "HOTEL":
                 merged["bookingIdentity"] = {
                     "type": "HOTEL",
@@ -113,19 +113,14 @@ def process_files(pdf_paths: list[str]) -> list[dict]:
                     "identifier2": identifier2
                 }
 
-            merged["documentsUsed"] = [
-                d.get("documentType") for d in docs
-            ]
-
+            merged["documentsUsed"] = [d.get("documentType") for d in docs]
             results.append(merged)
 
     return results
 
-
 def process_uploaded_files(uploaded_files):
     # same behavior for Streamlit
     return process_files(uploaded_files)
-
 
 if __name__ == "__main__":
     files = sys.argv[1:]

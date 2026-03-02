@@ -1,17 +1,14 @@
 # validators.py
-
 def validate_same_flight(base: dict, new: dict):
     keys = ["pnr", "flightNumber"]
-
     for k in keys:
         if base.get(k) and new.get(k):
             if base[k] != new[k]:
                 raise ValueError("Documents belong to different flights")
-                
+
 def get_flight_key(data: dict, doc_type: str) -> tuple:
-    """
-    Unique identifier for a booking based on document type
-    """
+    """Unique identifier for a booking based on document type"""
+    
     if doc_type in ["BOARDING_PASS", "INVOICE", "TICKET"]:
         # Try to get PNR from different possible locations
         pnr = data.get("pnr", "")
@@ -38,6 +35,7 @@ def get_flight_key(data: dict, doc_type: str) -> tuple:
             flight_number.strip(),
             "FLIGHT"
         )
+    
     elif doc_type == "TRAIN_TICKET":
         # NEW train ticket structure
         ticket_ref = data.get("ticket_reference", "").strip()
@@ -52,11 +50,30 @@ def get_flight_key(data: dict, doc_type: str) -> tuple:
             train_number,
             "TRAIN"
         )
+    
+    elif doc_type == "BUS_TICKET":
+        # Bus ticket structure
+        ticket_ref = data.get("ticket_reference", "").strip()
+        service_number = ""
+        
+        # Extract service number from journey.bus_details object
+        if "journey" in data and isinstance(data["journey"], dict):
+            bus_details = data["journey"].get("bus_details", {})
+            if isinstance(bus_details, dict):
+                service_number = bus_details.get("service_number", "").strip()
+        
+        return (
+            ticket_ref,
+            service_number,
+            "BUS"
+        )
+    
     elif doc_type == "HOTEL_BOOKING":
         return (
             data.get("confirmation_number", "").strip(),
             data.get("hotel", {}).get("name", "").strip() if isinstance(data.get("hotel"), dict) else "",
             "HOTEL"
         )
+    
     else:
         return ("", "", doc_type)

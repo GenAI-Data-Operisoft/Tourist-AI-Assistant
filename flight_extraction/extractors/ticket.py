@@ -35,12 +35,16 @@ Extract flight ticket/itinerary fields as JSON with the following structure:
       "departure": {{
         "airport": "string (3-letter code)",
         "terminal": "string",
-        "datetime_local": "YYYY-MM-DDTHH:MM:SS+TZ"
+        "date": "YYYY-MM-DD",
+        "time": "HH:MM:SS",
+        "timezone": "+TZ"
       }},
       "arrival": {{
         "airport": "string (3-letter code)",
         "terminal": "string",
-        "datetime_local": "YYYY-MM-DDTHH:MM:SS+TZ"
+        "date": "YYYY-MM-DD",
+        "time": "HH:MM:SS",
+        "timezone": "+TZ"
       }},
       "baggage_allowance": {{
         "checked": "string (e.g., 1PC, 2PC)",
@@ -63,13 +67,14 @@ Rules:
 - Extract all passengers if multiple
 - Extract all flight segments if multi-leg journey
 - Use ISO 8601 format for dates/times with timezone
-- Missing fields → empty string or empty array
+- Split datetime_local into separate date, time, and timezone fields
+- Missing fields → empty string or empty array or null
 - No hallucination
 - Preserve exact values from document
 
 Text:
 <<<{text}>>>
 """
-    
+
     response_text = LLMConfig.call_llm(prompt, max_tokens=2000)
     return LLMConfig.extract_json(response_text)

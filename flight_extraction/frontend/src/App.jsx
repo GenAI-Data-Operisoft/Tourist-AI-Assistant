@@ -6,9 +6,11 @@ import ResultsPanel from './components/ResultsPanel';
 import './App.css';
 
 // Determine API base URL based on environment
-const API_BASE = window.location.hostname === 'localhost' 
-  ? 'http://localhost:8001' 
-  : 'http://15.207.101.126:8001';
+// const API_BASE = window.location.hostname === 'localhost' 
+//   ? 'http://localhost:8001' 
+//   : 'http://65.2.55.2:8001';
+
+const API_BASE = '/api';
 
 function App() {
   const [files, setFiles] = useState([]);

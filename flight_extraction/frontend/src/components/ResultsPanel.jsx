@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Plane, Train, Hotel, Download, ChevronDown, ChevronUp, AlertTriangle, Lightbulb } from 'lucide-react';
+import { Plane, Train, Hotel, Download, ChevronDown, ChevronUp, AlertTriangle, Lightbulb, Code, Bus } from 'lucide-react';
 import './ResultsPanel.css';
 
 function ResultsPanel({ results }) {
   const [expandedIndex, setExpandedIndex] = useState(0);
+  const [showJsonIndex, setShowJsonIndex] = useState(-1);
 
   const getDocumentInfo = (result) => {
     // Check if it's a standalone document or merged booking
@@ -30,6 +31,13 @@ function ResultsPanel({ results }) {
         identifier1: result.ticket_reference,
         identifier2: result.journey?.train_number
       };
+    } else if (docType === 'bus_ticket') {
+      return {
+        type: 'BUS',
+        title: 'Bus Ticket',
+        identifier1: result.ticket_reference,
+        identifier2: result.journey?.bus_details?.service_number
+      };
     } else if (docType === 'flight_itinerary') {
       return {
         type: 'FLIGHT',
@@ -42,8 +50,8 @@ function ResultsPanel({ results }) {
       return {
         type: result.bookingIdentity.type,
         title: `${result.bookingIdentity.type} Booking`,
-        identifier1: result.bookingIdentity.pnr || result.bookingIdentity.bookingReference,
-        identifier2: result.bookingIdentity.flightNumber || result.bookingIdentity.trainNumber || result.bookingIdentity.hotelName
+        identifier1: result.bookingIdentity.pnr || result.bookingIdentity.bookingReference || result.bookingIdentity.ticketReference,
+        identifier2: result.bookingIdentity.flightNumber || result.bookingIdentity.trainNumber || result.bookingIdentity.serviceNumber || result.bookingIdentity.hotelName
       };
     }
     
@@ -60,6 +68,7 @@ function ResultsPanel({ results }) {
       case 'FLIGHT': return <Plane size={20} />;
       case 'TRAIN': return <Train size={20} />;
       case 'HOTEL': return <Hotel size={20} />;
+      case 'BUS': return <Bus size={20} />;
       default: return <Plane size={20} />;
     }
   };
@@ -82,6 +91,10 @@ function ResultsPanel({ results }) {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const toggleJsonView = (index) => {
+    setShowJsonIndex(showJsonIndex === index ? -1 : index);
   };
 
   const renderField = (label, value) => {
@@ -112,7 +125,9 @@ function ResultsPanel({ results }) {
               // Nested object - render as subsection
               return (
                 <div key={key} className="nested-section">
-                  <div className="nested-title">{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</div>
+                  <div className="nested-title">
+                    {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                  </div>
                   {Object.entries(value).map(([subKey, subValue]) => {
                     if (typeof subValue === 'object') return null;
                     const label = subKey.replace(/([A-Z_])/g, ' $1').replace(/^./, str => str.toUpperCase());
@@ -121,7 +136,9 @@ function ResultsPanel({ results }) {
                 </div>
               );
             }
+            
             if (Array.isArray(value)) return null; // Handle arrays separately
+            
             const label = key.replace(/([A-Z_])/g, ' $1').replace(/^./, str => str.toUpperCase());
             return renderField(label, value);
           })}
@@ -223,6 +240,7 @@ function ResultsPanel({ results }) {
       </div>
     );
   };
+
   const renderSegments = (segments) => {
     if (!segments || segments.length === 0) return null;
     
@@ -299,6 +317,7 @@ function ResultsPanel({ results }) {
           const docInfo = getDocumentInfo(result);
           const insights = result.reasoningInsights || result._metadata || {};
           const isExpanded = expandedIndex === index;
+          const showJson = showJsonIndex === index;
 
           return (
             <div key={index} className="result-card">
@@ -327,8 +346,14 @@ function ResultsPanel({ results }) {
                     )}
                     {docInfo.type === 'TRAIN' && (
                       <>
-                        {renderField('PNR', docInfo.identifier1)}
+                        {renderField('Ticket Reference', docInfo.identifier1)}
                         {renderField('Train Number', docInfo.identifier2)}
+                      </>
+                    )}
+                    {docInfo.type === 'BUS' && (
+                      <>
+                        {renderField('Ticket Reference', docInfo.identifier1)}
+                        {renderField('Service Number', docInfo.identifier2)}
                       </>
                     )}
                     {docInfo.type === 'HOTEL' && (
@@ -338,6 +363,22 @@ function ResultsPanel({ results }) {
                       </>
                     )}
                   </div>
+
+                  {/* Show JSON Button at Top */}
+                  <button
+                    onClick={() => toggleJsonView(index)}
+                    className="toggle-json-button-top"
+                  >
+                    <Code size={16} />
+                    {showJson ? 'Hide JSON' : 'Show JSON'}
+                  </button>
+
+                  {/* JSON View */}
+                  {showJson && (
+                    <div className="json-view">
+                      <pre>{JSON.stringify(result, null, 2)}</pre>
+                    </div>
+                  )}
 
                   {/* Boarding Pass specific display */}
                   {result.document_type === 'boarding_pass' && (
@@ -420,6 +461,52 @@ function ResultsPanel({ results }) {
                     </>
                   )}
 
+                  {/* Bus Ticket specific display */}
+                  {result.document_type === 'bus_ticket' && (
+                    <>
+                      {result.provider && renderSection('Provider', result.provider)}
+                      {result.passenger && renderSection('Passenger', result.passenger)}
+                      {result.journey && (
+                        <div className="data-section">
+                          <h4>Journey Details</h4>
+                          <div className="fields-grid">
+                            {result.journey.bus_details && (
+                              <div className="nested-section">
+                                <div className="nested-title">Bus Details</div>
+                                {renderField('Service Number', result.journey.bus_details.service_number)}
+                                {renderField('Bus Type', result.journey.bus_details.bus_type)}
+                              </div>
+                            )}
+                            
+                            {result.journey.departure && (
+                              <div className="nested-section">
+                                <div className="nested-title">Departure</div>
+                                {renderField('Station', result.journey.departure.station_name)}
+                                {renderField('City', result.journey.departure.city)}
+                                {renderField('Platform', result.journey.departure.platform)}
+                                {renderField('Time', result.journey.departure.datetime_local)}
+                              </div>
+                            )}
+                            
+                            {result.journey.arrival && (
+                              <div className="nested-section">
+                                <div className="nested-title">Arrival</div>
+                                {renderField('Station', result.journey.arrival.station_name)}
+                                {renderField('City', result.journey.arrival.city)}
+                                {renderField('Time', result.journey.arrival.datetime_local)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {result.seat && renderSection('Seat', result.seat)}
+                      {result.fare && renderSection('Fare', result.fare)}
+                      {result.baggage && renderSection('Baggage', result.baggage)}
+                      {result.barcode && result.barcode.format && renderSection('Barcode', result.barcode)}
+                      {result.policies && renderSection('Policies', result.policies)}
+                    </>
+                  )}
+
                   {/* Merged booking display */}
                   {result.bookingIdentity && (
                     <>
@@ -431,7 +518,7 @@ function ResultsPanel({ results }) {
                       
                       {/* Flight Segments */}
                       {result.segments && renderSegments(result.segments)}
-
+                      
                       {/* Data Sections */}
                       {result.passenger && renderSection('Passenger', result.passenger)}
                       {result.guest && renderSection('Guest', result.guest)}
@@ -470,7 +557,7 @@ function ResultsPanel({ results }) {
                     </div>
                   )}
 
-                  {/* Download Button */}
+                  {/* Download Button at Bottom */}
                   <button
                     onClick={() => downloadJSON(result, `${docInfo.title.toLowerCase().replace(' ', '_')}_${index + 1}.json`)}
                     className="download-button"

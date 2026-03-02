@@ -11,7 +11,12 @@ Extract hotel booking/voucher fields as JSON with the following EXACT structure:
   "issue_date": "YYYY-MM-DD",
   "hotel": {{
     "name": "string",
-    "address": "string",
+    "address": "string (full address)",
+    "street": "string (street address only)",
+    "city": "string",
+    "state": "string or null",
+    "country": "string",
+    "zip_code": "string or null",
     "phone": "string"
   }},
   "guest": {{
@@ -39,14 +44,16 @@ Rules:
 - Use EXACT structure shown above
 - guest.full_name should be "FIRST LAST" format
 - Calculate nights from check_in and check_out dates
-- Extract complete hotel address
-- Missing fields → empty string or 0 for numbers
+- Split hotel address into: street, city, state, country, zip_code
+- Keep full address in "address" field as well
+- Extract check-in and check-out times separately if available
+- Missing fields → null or empty string
 - No hallucination
 - Preserve exact values from document
 
 Text:
 <<<{text}>>>
 """
-    
+
     response_text = LLMConfig.call_llm(prompt, max_tokens=1200)
     return LLMConfig.extract_json(response_text)

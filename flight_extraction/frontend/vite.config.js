@@ -5,7 +5,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3001,
-    host: '0.0.0.0', // Make sure Vite listens on all network interfaces
+    host: '0.0.0.0',
+    allowedHosts: [
+      'falcial-subaerial-nakita.ngrok-free.dev'
+    ],
     proxy: {
       '/api': {
         target: 'http://0.0.0.0:8001',

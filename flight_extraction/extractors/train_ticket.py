@@ -26,13 +26,17 @@ Extract train ticket fields as JSON with the following EXACT structure:
     "departure": {{
       "station_name": "string",
       "station_code": "string or null",
-      "datetime_local": "YYYY-MM-DDTHH:MM:SS+TZ",
+      "date": "YYYY-MM-DD",
+      "time": "HH:MM:SS",
+      "timezone": "+TZ",
       "platform": "string or null"
     }},
     "arrival": {{
       "station_name": "string",
       "station_code": "string or null",
-      "datetime_local": "YYYY-MM-DDTHH:MM:SS+TZ"
+      "date": "YYYY-MM-DD",
+      "time": "HH:MM:SS",
+      "timezone": "+TZ"
     }}
   }},
   "class": {{
@@ -61,6 +65,7 @@ Rules:
 - Use EXACT structure shown above
 - full_name should be "FIRST LAST" format (e.g., "RAHUL KUMAR")
 - Use ISO 8601 format for datetime_local with timezone
+- Split datetime into separate date, time, and timezone fields
 - passenger_type must be one of: adult, child, infant, senior, unknown
 - travel_class must be one of: 1A, 2A, 2S, 3A, unknown
 - seat_or_berth.type must be one of: seat, upper_berth, lower_berth, unknown
@@ -72,6 +77,6 @@ Rules:
 Text:
 <<<{text}>>>
 """
-    
+
     response_text = LLMConfig.call_llm(prompt, max_tokens=1500)
     return LLMConfig.extract_json(response_text)

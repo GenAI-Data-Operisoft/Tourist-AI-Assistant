@@ -295,8 +295,53 @@
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
+  margin-top: 1rem;
 }
 
 .download-button:hover {
   background: #059669;
+}
+
+/* Toggle JSON Button at Top - NEW */
+.toggle-json-button-top {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-bottom: 1rem;
+}
+
+.toggle-json-button-top:hover {
+  background: #5568d3;
+}
+
+/* JSON View with White Background - UPDATED */
+.json-view {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  overflow-x: auto;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.json-view pre {
+  margin: 0;
+  color: #1f2937;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
