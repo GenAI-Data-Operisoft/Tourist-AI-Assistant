@@ -1,5 +1,5 @@
 # api.py
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -8,6 +8,7 @@ import os
 import boto3
 from botocore.config import Config
 from typing import List, Optional, Tuple
+from functools import lru_cache
 from main import process_files
 
 app = FastAPI(title="Travel Document Extractor API")
@@ -17,7 +18,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[ "http://localhost:3000", 
                     "http://localhost:5173", 
-                    "http://65.2.55.2:3001"],
+                    "http://65.2.55.2:3001",],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -30,11 +31,89 @@ s3_config = Config(
 )
 s3_client = boto3.client('s3', config=s3_config)
 
+AUTH_ENABLED = os.getenv("AUTH_ENABLED", "false").lower() in {"1", "true", "yes"}
+COGNITO_REGION = os.getenv("COGNITO_REGION", "")
+COGNITO_USER_POOL_ID = os.getenv("COGNITO_USER_POOL_ID", "")
+COGNITO_APP_CLIENT_ID = os.getenv("COGNITO_APP_CLIENT_ID", "")
+COGNITO_ISSUER = (
+    f"https://cognito-idp.{COGNITO_REGION}.amazonaws.com/{COGNITO_USER_POOL_ID}"
+    if COGNITO_REGION and COGNITO_USER_POOL_ID
+    else ""
+)
+
 class S3LinkRequest(BaseModel):
     s3_urls: List[str]
 
 class MixedRequest(BaseModel):
     s3_urls: Optional[List[str]] = []
+
+
+@lru_cache(maxsize=1)
+def get_jwks():
+    import requests
+
+    if not COGNITO_ISSUER:
+        raise HTTPException(
+            status_code=500,
+            detail="Cognito issuer is not configured on the backend",
+        )
+    jwks_url = f"{COGNITO_ISSUER}/.well-known/jwks.json"
+    response = requests.get(jwks_url, timeout=5)
+    response.raise_for_status()
+    return response.json().get("keys", [])
+
+
+def verify_cognito_token(authorization: str = Header(default=None)):
+    if not AUTH_ENABLED:
+        return None
+
+    import requests
+    from jose import jwt, JWTError
+
+    if not COGNITO_REGION or not COGNITO_USER_POOL_ID or not COGNITO_APP_CLIENT_ID:
+        raise HTTPException(
+            status_code=500,
+            detail="AUTH_ENABLED=true but Cognito env vars are missing",
+        )
+
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing bearer token")
+
+    token = authorization.split(" ", 1)[1].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing bearer token")
+
+    try:
+        unverified_header = jwt.get_unverified_header(token)
+        kid = unverified_header.get("kid")
+        jwks = get_jwks()
+        key = next((k for k in jwks if k.get("kid") == kid), None)
+
+        if not key:
+            get_jwks.cache_clear()
+            jwks = get_jwks()
+            key = next((k for k in jwks if k.get("kid") == kid), None)
+            if not key:
+                raise HTTPException(status_code=401, detail="Invalid token key")
+
+        payload = jwt.decode(
+            token,
+            key,
+            algorithms=["RS256"],
+            audience=COGNITO_APP_CLIENT_ID,
+            issuer=COGNITO_ISSUER,
+        )
+
+        if payload.get("token_use") != "id":
+            raise HTTPException(status_code=401, detail="Invalid token use")
+
+        return payload
+    except HTTPException:
+        raise
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    except requests.RequestException:
+        raise HTTPException(status_code=503, detail="Could not reach Cognito JWKS endpoint")
 
 def download_from_s3(s3_url: str) -> Tuple[str, dict]:
     """Download file from S3 and return local temp path with metadata"""
@@ -103,7 +182,7 @@ def root():
     return {"message": "Travel Document Extractor API", "status": "running"}
 
 @app.get("/s3-proxy/{bucket}/{key:path}")
-async def s3_proxy(bucket: str, key: str):
+async def s3_proxy(bucket: str, key: str, _user=Depends(verify_cognito_token)):
     """Proxy endpoint to serve S3 files through backend (works with temporary credentials)"""
     from fastapi.responses import StreamingResponse
     import io
@@ -148,7 +227,10 @@ async def s3_proxy(bucket: str, key: str):
         raise HTTPException(status_code=404, detail=f"Failed to fetch S3 file: {str(e)}")
 
 @app.post("/extract/upload")
-async def extract_from_upload(files: List[UploadFile] = File(...)):
+async def extract_from_upload(
+    files: List[UploadFile] = File(...),
+    _user=Depends(verify_cognito_token)
+):
     """Extract data from uploaded PDF and image files"""
     temp_paths = []
     file_info = []
@@ -199,7 +281,10 @@ async def extract_from_upload(files: List[UploadFile] = File(...)):
                 pass
 
 @app.post("/extract/s3")
-async def extract_from_s3(request: S3LinkRequest):
+async def extract_from_s3(
+    request: S3LinkRequest,
+    _user=Depends(verify_cognito_token)
+):
     """Extract data from S3 URLs - processes each link individually"""
     temp_paths = []
     file_metadata = []
@@ -266,7 +351,8 @@ async def extract_from_s3(request: S3LinkRequest):
 @app.post("/extract/mixed")
 async def extract_mixed(
     files: Optional[List[UploadFile]] = File(None),
-    s3_urls: Optional[str] = Form(None)
+    s3_urls: Optional[str] = Form(None),
+    _user=Depends(verify_cognito_token)
 ):
     """Extract data from both uploaded files and S3 URLs"""
     temp_paths = []
@@ -380,4 +466,4 @@ async def extract_mixed(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=8005)

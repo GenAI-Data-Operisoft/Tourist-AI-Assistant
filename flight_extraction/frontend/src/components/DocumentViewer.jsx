@@ -5,15 +5,16 @@ import './DocumentViewer.css';
 function DocumentViewer({ files, fileMetadata, selectedDocument, onDocumentSelect }) {
   const [currentPage, setCurrentPage] = useState(0);
 
-  // Combine uploaded files and S3 files
+  // When using pre-signed URLs, all files are in S3 (fileMetadata)
+  // Only show uploaded files if they haven't been uploaded to S3 yet
   const allFiles = [
-    ...files.map((file, idx) => ({ type: 'upload', file, name: file.name, index: idx })),
-    ...(fileMetadata || []).filter(meta => meta.source === 's3').map((meta, idx) => ({ 
+    // Only show fileMetadata (all files are now in S3)
+    ...(fileMetadata || []).map((meta, idx) => ({ 
       type: 's3', 
       bucket: meta.bucket,
       key: meta.key,
       name: meta.name,
-      index: files.length + idx 
+      index: idx 
     }))
   ];
 

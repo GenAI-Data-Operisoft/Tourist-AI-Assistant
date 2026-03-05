@@ -10,3 +10,5 @@ pymupdf
 pdf2image
 streamlit
 litellm
+python-jose[cryptography]
+requests

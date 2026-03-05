@@ -31,6 +31,42 @@ function App() {
     }
   };
 
+  // Helper function to upload file using pre-signed URL
+  const uploadFileToS3 = async (file) => {
+    // Step 1: Get pre-signed URL
+    const urlResponse = await axios.post(`${API_BASE}/generate-upload-url`, {
+      filename: file.name,
+      content_type: file.type
+    });
+
+    const { upload_url, fields, s3_url, bucket, key, original_filename } = urlResponse.data;
+
+    // Step 2: Upload to S3 using pre-signed URL
+    const formData = new FormData();
+    
+    // Add all fields from pre-signed POST
+    Object.keys(fields).forEach(key => {
+      formData.append(key, fields[key]);
+    });
+    
+    // Add the file (must be last)
+    formData.append('file', file);
+
+    // Upload to S3 (direct, bypasses API Gateway)
+    await axios.post(upload_url, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+
+    // Return S3 URL with metadata including original filename
+    return {
+      s3_url,
+      bucket,
+      key,
+      name: original_filename,
+      source: 's3'
+    };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -40,79 +76,93 @@ function App() {
     setProcessingStatus(null);
 
     try {
-      const formData = new FormData();
-      
-      // Add files
-      files.forEach(file => {
-        formData.append('files', file);
-      });
-
-      // Parse S3 links
-      const s3UrlArray = s3Links
+      // Parse S3 links from textarea (these are EXISTING S3 files, don't re-upload)
+      const existingS3Urls = s3Links
         .split('\n')
         .map(link => link.trim())
         .filter(link => link.length > 0);
 
-      // Show processing status
-      const totalFiles = files.length + s3UrlArray.length;
-      setProcessingStatus({
-        total: totalFiles,
-        current: 0,
-        message: 'Starting processing...'
-      });
-
-      let response;
+      const totalFiles = files.length + existingS3Urls.length;
       
-      if (files.length > 0 && s3UrlArray.length > 0) {
-        // Mixed: both files and S3
-        setProcessingStatus({
-          total: totalFiles,
-          current: 0,
-          message: `Processing ${files.length} uploaded file(s) and ${s3UrlArray.length} S3 link(s)...`
-        });
-        
-        // Add s3_urls as a form field (files already added above)
-        formData.append('s3_urls', JSON.stringify(s3UrlArray));
-        
-        response = await axios.post(`${API_BASE}/extract/mixed`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-      } else if (files.length > 0) {
-        // Only files
-        setProcessingStatus({
-          total: totalFiles,
-          current: 0,
-          message: `Processing ${files.length} uploaded file(s)...`
-        });
-        
-        response = await axios.post(`${API_BASE}/extract/upload`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-      } else if (s3UrlArray.length > 0) {
-        // Only S3
-        setProcessingStatus({
-          total: s3UrlArray.length,
-          current: 0,
-          message: `Processing ${s3UrlArray.length} S3 link(s) one by one...`
-        });
-        
-        response = await axios.post(`${API_BASE}/extract/s3`, {
-          s3_urls: s3UrlArray
-        });
-      } else {
+      if (totalFiles === 0) {
         throw new Error('Please upload files or provide S3 links');
       }
+      
+      // Upload NEW files to S3 using pre-signed URLs
+      const uploadedS3Urls = [];
+      const uploadedMetadata = [];
+      
+      if (files.length > 0) {
+        setProcessingStatus({
+          total: totalFiles,
+          current: 0,
+          message: `Uploading ${files.length} file(s) to S3...`
+        });
+
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          
+          setProcessingStatus({
+            total: totalFiles,
+            current: i,
+            message: `Uploading ${file.name} (${i + 1}/${files.length})...`
+          });
+
+          try {
+            const uploadResult = await uploadFileToS3(file);
+            uploadedS3Urls.push(uploadResult.s3_url);
+            uploadedMetadata.push(uploadResult);  // Store metadata with original filename
+          } catch (err) {
+            setFileErrors(prev => [...prev, {
+              name: file.name,
+              error: `Upload failed: ${err.message}`
+            }]);
+          }
+        }
+      }
+
+      // Combine: newly uploaded files + existing S3 links (no duplicates)
+      const allS3Urls = [...uploadedS3Urls, ...existingS3Urls];
+
+      if (allS3Urls.length === 0) {
+        throw new Error('No files to process');
+      }
+
+      // Process all files from S3
+      setProcessingStatus({
+        total: allS3Urls.length,
+        current: 0,
+        message: `Processing ${allS3Urls.length} file(s)...`
+      });
+
+      const response = await axios.post(`${API_BASE}/extract/s3`, {
+        s3_urls: allS3Urls
+      });
 
       setResults(response.data.results);
       
-      // Store file metadata for S3 files
-      if (response.data.files) {
-        setFileMetadata(response.data.files);
-      }
+      // Use uploaded metadata for files we uploaded, and response metadata for existing S3 files
+      // Match by S3 URL to avoid duplicates
+      const responseMetadata = response.data.files || [];
+      const uploadedS3UrlSet = new Set(uploadedS3Urls);
       
-      // Handle errors from individual files
+      // Filter out response metadata for files we just uploaded (to avoid duplicates)
+      const existingS3Metadata = responseMetadata.filter(meta => {
+        const metaUrl = meta.url || `s3://${meta.bucket}/${meta.key}`;
+        return !uploadedS3UrlSet.has(metaUrl);
+      });
+      
+      // Combine: uploaded files (with original names) + existing S3 files
+      const combinedMetadata = [
+        ...uploadedMetadata,      // Files we just uploaded (original names)
+        ...existingS3Metadata     // Existing S3 files from textarea
+      ];
+      
+      setFileMetadata(combinedMetadata);
+      
+      // Handle errors from processing
       if (response.data.errors && response.data.errors.length > 0) {
-        setFileErrors(response.data.errors);
+        setFileErrors(prev => [...prev, ...response.data.errors]);
       }
       
       // Show summary
