@@ -1,5 +1,5 @@
 # api.py
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -9,15 +9,20 @@ import boto3
 from botocore.config import Config
 from typing import List, Optional, Tuple
 from main import process_files
+from auth import get_current_user
 
 app = FastAPI(title="Travel Document Extractor API")
 
 # CORS middleware for React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[ "http://localhost:3000", 
-                    "http://localhost:5173", 
-                    "http://65.2.55.2:3001"],
+    allow_origins=[
+        "http://localhost:3000", 
+        "http://localhost:3001",
+        "http://localhost:5173",
+        "https://ai.tourish.biz",  # Add your production domain
+        "http://65.2.55.2:3001"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -148,7 +153,10 @@ async def s3_proxy(bucket: str, key: str):
         raise HTTPException(status_code=404, detail=f"Failed to fetch S3 file: {str(e)}")
 
 @app.post("/extract/upload")
-async def extract_from_upload(files: List[UploadFile] = File(...)):
+async def extract_from_upload(
+    files: List[UploadFile] = File(...),
+    user = Depends(get_current_user)
+):
     """Extract data from uploaded PDF and image files"""
     temp_paths = []
     file_info = []
@@ -199,7 +207,10 @@ async def extract_from_upload(files: List[UploadFile] = File(...)):
                 pass
 
 @app.post("/extract/s3")
-async def extract_from_s3(request: S3LinkRequest):
+async def extract_from_s3(
+    request: S3LinkRequest,
+    user = Depends(get_current_user)
+):
     """Extract data from S3 URLs - processes each link individually"""
     temp_paths = []
     file_metadata = []
@@ -266,7 +277,8 @@ async def extract_from_s3(request: S3LinkRequest):
 @app.post("/extract/mixed")
 async def extract_mixed(
     files: Optional[List[UploadFile]] = File(None),
-    s3_urls: Optional[str] = Form(None)
+    s3_urls: Optional[str] = Form(None),
+    user = Depends(get_current_user)
 ):
     """Extract data from both uploaded files and S3 URLs"""
     temp_paths = []

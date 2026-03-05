@@ -10,3 +10,7 @@ pymupdf
 pdf2image
 streamlit
 litellm
+pyjwt[crypto]
+requests
+python-dotenv
+mangum

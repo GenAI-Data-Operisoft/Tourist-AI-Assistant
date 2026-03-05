@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Upload, Link as LinkIcon, FileText, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, Link as LinkIcon, FileText, Loader2, CheckCircle, AlertCircle, LogOut } from 'lucide-react';
 import DocumentViewer from './components/DocumentViewer';
 import ResultsPanel from './components/ResultsPanel';
+import Login from './Login';
 import './App.css';
 
 // Determine API base URL based on environment
@@ -13,6 +14,7 @@ import './App.css';
 const API_BASE = import.meta.env.VITE_API_BASE;
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [files, setFiles] = useState([]);
   const [s3Links, setS3Links] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,6 +24,11 @@ function App() {
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [processingStatus, setProcessingStatus] = useState(null);
   const [fileErrors, setFileErrors] = useState([]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) setIsAuthenticated(true);
+  }, []);
 
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
@@ -40,6 +47,9 @@ function App() {
     setProcessingStatus(null);
 
     try {
+      const token = localStorage.getItem('token');
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+      
       const formData = new FormData();
       
       // Add files
@@ -75,7 +85,7 @@ function App() {
         formData.append('s3_urls', JSON.stringify(s3UrlArray));
         
         response = await axios.post(`${API_BASE}/extract/mixed`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
+          headers: { ...headers, 'Content-Type': 'multipart/form-data' }
         });
       } else if (files.length > 0) {
         // Only files
@@ -86,7 +96,7 @@ function App() {
         });
         
         response = await axios.post(`${API_BASE}/extract/upload`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
+          headers: { ...headers, 'Content-Type': 'multipart/form-data' }
         });
       } else if (s3UrlArray.length > 0) {
         // Only S3
@@ -98,7 +108,7 @@ function App() {
         
         response = await axios.post(`${API_BASE}/extract/s3`, {
           s3_urls: s3UrlArray
-        });
+        }, { headers });
       } else {
         throw new Error('Please upload files or provide S3 links');
       }
@@ -144,12 +154,38 @@ function App() {
 
   return (
     <div className="app">
-      <header className="header">
-        <div className="header-content">
-          <h1>🧳 Travel Document Extractor</h1>
-          <p>AI-powered extraction for flights, trains, and hotels</p>
-        </div>
-      </header>
+      {!isAuthenticated ? (
+        <Login onSuccess={() => setIsAuthenticated(true)} />
+      ) : (
+        <>
+          <header className="header">
+            <div className="header-content">
+              <h1>🧳 Travel Document Extractor</h1>
+              <p>AI-powered extraction for flights, trains, and hotels</p>
+            </div>
+            <button
+              onClick={() => {
+                localStorage.removeItem('token');
+                setIsAuthenticated(false);
+                handleReset();
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                background: 'rgba(255,255,255,0.2)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              <LogOut size={18} />
+              Logout
+            </button>
+          </header>
 
       <main className="main-content">
         {!results ? (
@@ -269,6 +305,8 @@ function App() {
           </div>
         )}
       </main>
+        </>
+      )}
     </div>
   );
 }
