@@ -228,7 +228,7 @@ function App() {
     <div className="app">
       <header className="header">
         <div className="header-content">
-          <h1>🧳 Travel Document Extractor</h1>
+          <h1>🧳 Tourish AI ASSISTANT</h1>
           <p>AI-powered extraction for flights, trains, and hotels</p>
         </div>
       </header>

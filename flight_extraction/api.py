@@ -11,7 +11,7 @@ from typing import List, Optional, Tuple
 from main import process_files
 from auth import get_current_user
 
-app = FastAPI(title="Travel Document Extractor API")
+app = FastAPI(title="TOURISH AI ASSISTANT API")
 
 # CORS middleware for React frontend
 app.add_middleware(
@@ -20,7 +20,8 @@ app.add_middleware(
         "http://localhost:3000", 
         "http://localhost:3001",
         "http://localhost:5173",
-        "https://ai.tourish.biz",  # Add your production domain
+        "https://ai.tourish.biz"
+        "https://ai-dev.tourish.biz",  # Add your production domain
         "http://65.2.55.2:3001"
     ],
     allow_credentials=True,
@@ -105,7 +106,7 @@ def download_from_s3(s3_url: str) -> Tuple[str, dict]:
 
 @app.get("/")
 def root():
-    return {"message": "Travel Document Extractor API", "status": "running"}
+    return {"message": "TOURISH AI ASSISTNAT API", "status": "running"}
 
 @app.get("/s3-proxy/{bucket}/{key:path}")
 async def s3_proxy(bucket: str, key: str):
