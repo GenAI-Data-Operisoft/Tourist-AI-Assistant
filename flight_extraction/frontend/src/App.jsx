@@ -15,6 +15,7 @@ const API_BASE = import.meta.env.VITE_API_BASE;
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [username, setUsername] = useState('');
   const [files, setFiles] = useState([]);
   const [s3Links, setS3Links] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,7 +28,11 @@ function App() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (token) setIsAuthenticated(true);
+    const storedUsername = localStorage.getItem('username');
+    if (token) {
+      setIsAuthenticated(true);
+      setUsername(storedUsername || 'User');
+    }
   }, []);
 
   const handleFileChange = (e) => {
@@ -234,7 +239,10 @@ function App() {
   return (
     <div className="app">
       {!isAuthenticated ? (
-        <Login onSuccess={() => setIsAuthenticated(true)} />
+        <Login onSuccess={(user) => {
+          setIsAuthenticated(true);
+          setUsername(user);
+        }} />
       ) : (
         <>
           <header className="header">
@@ -242,28 +250,22 @@ function App() {
               <h1>🧳 Tourish AI ASSISTANT</h1>
               <p>AI-powered extraction for flights, trains, and hotels</p>
             </div>
-            <button
-              onClick={() => {
-                localStorage.removeItem('token');
-                setIsAuthenticated(false);
-                handleReset();
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                background: 'rgba(255,255,255,0.2)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              <LogOut size={18} />
-              Logout
-            </button>
+            <div className="user-info">
+              <div className="username">{username}</div>
+              <button
+                onClick={() => {
+                  localStorage.removeItem('token');
+                  localStorage.removeItem('username');
+                  setIsAuthenticated(false);
+                  setUsername('');
+                  handleReset();
+                }}
+                className="logout-button"
+              >
+                <LogOut size={18} />
+                Logout
+              </button>
+            </div>
           </header>
 
       <main className="main-content">

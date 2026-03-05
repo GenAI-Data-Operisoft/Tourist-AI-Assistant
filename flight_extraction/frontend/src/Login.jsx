@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { LogIn, Loader2, AlertCircle } from 'lucide-react';
+import tourishLogo from './assets/tourish-logo.png';
 
 const COGNITO_REGION = import.meta.env.VITE_COGNITO_REGION;
 const COGNITO_CLIENT_ID = import.meta.env.VITE_COGNITO_APP_CLIENT_ID;
@@ -36,7 +37,8 @@ function Login({ onSuccess }) {
       
       if (data.AuthenticationResult) {
         localStorage.setItem('token', data.AuthenticationResult.AccessToken);
-        onSuccess();
+        localStorage.setItem('username', username);
+        onSuccess(username);
       } else {
         setError(data.message || 'Login failed');
       }
@@ -64,8 +66,19 @@ function Login({ onSuccess }) {
         boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <LogIn size={48} color="#667eea" style={{ marginBottom: '16px' }} />
-          <h2 style={{ margin: '0 0 8px 0', fontSize: '24px' }}>Travel Document Extractor</h2>
+          <img 
+            src={tourishLogo} 
+            alt="Tourish Logo" 
+            style={{ 
+              width: '200px', 
+              height: 'auto', 
+              marginBottom: '24px',
+              display: 'block',
+              marginLeft: 'auto',
+              marginRight: 'auto'
+            }} 
+          />
+          <h2 style={{ margin: '0 0 8px 0', fontSize: '24px' }}>TOURISH AI ASSISTANT</h2>
           <p style={{ color: '#6b7280', margin: 0 }}>Sign in to continue</p>
         </div>
 
