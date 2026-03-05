@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
-import { Upload, Link as LinkIcon, FileText, Loader2, CheckCircle, AlertCircle, LogOut } from 'lucide-react';
+import { Upload, Link as LinkIcon, FileText, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import DocumentViewer from './components/DocumentViewer';
 import ResultsPanel from './components/ResultsPanel';
-import Login from './Login';
 import './App.css';
 
 // Determine API base URL based on environment
@@ -14,7 +13,6 @@ import './App.css';
 const API_BASE = import.meta.env.VITE_API_BASE;
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [files, setFiles] = useState([]);
   const [s3Links, setS3Links] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,16 +23,43 @@ function App() {
   const [processingStatus, setProcessingStatus] = useState(null);
   const [fileErrors, setFileErrors] = useState([]);
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) setIsAuthenticated(true);
-  }, []);
-
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
-    setFiles(selectedFiles);
-    if (selectedFiles.length > 0) {
-      setSelectedDocument({ type: 'file', data: selectedFiles[0] });
+    
+    // Validate file types
+    const supportedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+    const unsupportedFiles = [];
+    const validFiles = [];
+    
+    selectedFiles.forEach(file => {
+      const fileName = file.name.toLowerCase();
+      const isSupported = supportedExtensions.some(ext => fileName.endsWith(ext));
+      
+      if (isSupported) {
+        validFiles.push(file);
+      } else {
+        unsupportedFiles.push(file.name);
+      }
+    });
+    
+    // Show error popup for unsupported files
+    if (unsupportedFiles.length > 0) {
+      const fileList = unsupportedFiles.join('\n• ');
+      alert(
+        `❌ Unsupported File Format\n\n` +
+        `The following file(s) are not supported:\n\n• ${fileList}\n\n` +
+        `Supported formats: PDF, JPG, JPEG, PNG`
+      );
+    }
+    
+    // Only set valid files
+    if (validFiles.length > 0) {
+      setFiles(validFiles);
+      setSelectedDocument({ type: 'file', data: validFiles[0] });
+    } else if (unsupportedFiles.length > 0) {
+      // Clear file input if all files are invalid
+      e.target.value = '';
+      setFiles([]);
     }
   };
 
@@ -83,9 +108,6 @@ function App() {
     setProcessingStatus(null);
 
     try {
-      const token = localStorage.getItem('token');
-      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-      
       // Parse S3 links from textarea (these are EXISTING S3 files, don't re-upload)
       const existingS3Urls = s3Links
         .split('\n')
@@ -147,7 +169,7 @@ function App() {
 
       const response = await axios.post(`${API_BASE}/extract/s3`, {
         s3_urls: allS3Urls
-      }, { headers });
+      });
 
       setResults(response.data.results);
       
@@ -204,38 +226,12 @@ function App() {
 
   return (
     <div className="app">
-      {!isAuthenticated ? (
-        <Login onSuccess={() => setIsAuthenticated(true)} />
-      ) : (
-        <>
-          <header className="header">
-            <div className="header-content">
-              <h1>🧳 Travel Document Extractor</h1>
-              <p>AI-powered extraction for flights, trains, and hotels</p>
-            </div>
-            <button
-              onClick={() => {
-                localStorage.removeItem('token');
-                setIsAuthenticated(false);
-                handleReset();
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                background: 'rgba(255,255,255,0.2)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              <LogOut size={18} />
-              Logout
-            </button>
-          </header>
+      <header className="header">
+        <div className="header-content">
+          <h1>🧳 Travel Document Extractor</h1>
+          <p>AI-powered extraction for flights, trains, and hotels</p>
+        </div>
+      </header>
 
       <main className="main-content">
         {!results ? (
@@ -355,8 +351,6 @@ function App() {
           </div>
         )}
       </main>
-        </>
-      )}
     </div>
   );
 }
