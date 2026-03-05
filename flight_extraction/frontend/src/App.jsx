@@ -4,7 +4,6 @@ import { Upload, Link as LinkIcon, FileText, Loader2, CheckCircle, AlertCircle, 
 import DocumentViewer from './components/DocumentViewer';
 import ResultsPanel from './components/ResultsPanel';
 import Login from './Login';
-import tourishLogo from './assets/tourish-logo.png';
 import './App.css';
 
 // Determine API base URL based on environment
@@ -248,13 +247,8 @@ function App() {
         <>
           <header className="header">
             <div className="header-content">
-              <div className="header-title">
-                <img src={tourishLogo} alt="Tourish Logo" className="header-logo" />
-                <div>
-                  <h1>Tourish AI ASSISTANT</h1>
-                  <p>AI-powered extraction for flights, trains, and hotels</p>
-                </div>
-              </div>
+              <h1>🧳 Tourish AI ASSISTANT</h1>
+              <p>AI-powered extraction for flights, trains, and hotels</p>
             </div>
             <div className="user-info">
               <div className="username">{username}</div>
