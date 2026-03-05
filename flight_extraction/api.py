@@ -20,8 +20,8 @@ app.add_middleware(
         "http://localhost:3000", 
         "http://localhost:3001",
         "http://localhost:5173",
-        "https://ai.tourish.biz"
-        "https://ai-dev.tourish.biz",  # Add your production domain
+        "https://ai.tourish.biz",
+        "https://ai-dev.tourish.biz",
         "http://65.2.55.2:3001"
     ],
     allow_credentials=True,
