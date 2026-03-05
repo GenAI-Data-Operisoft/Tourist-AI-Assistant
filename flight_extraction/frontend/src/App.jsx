@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Upload, Link as LinkIcon, FileText, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, Link as LinkIcon, FileText, Loader2, CheckCircle, AlertCircle, LogOut } from 'lucide-react';
 import DocumentViewer from './components/DocumentViewer';
 import ResultsPanel from './components/ResultsPanel';
+import Login from './Login';
 import './App.css';
 
 // Determine API base URL based on environment
