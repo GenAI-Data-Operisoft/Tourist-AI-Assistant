@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { LogIn, Loader2, AlertCircle } from 'lucide-react';
 import tourishLogo from './assets/tourish-logo.png';
+import loginBanner from './assets/banner.png';
 
 const COGNITO_REGION = import.meta.env.VITE_COGNITO_REGION;
 const COGNITO_CLIENT_ID = import.meta.env.VITE_COGNITO_APP_CLIENT_ID;
@@ -53,124 +54,178 @@ function Login({ onSuccess }) {
     <div style={{
       minHeight: '100vh',
       display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      flexDirection: 'row'
     }}>
+      {/* Left Side - Login Form (White Background) */}
       <div style={{
+        flex: '0 0 45%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         background: 'white',
-        padding: '40px',
-        borderRadius: '16px',
-        width: '100%',
-        maxWidth: '400px',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+        padding: '40px'
       }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <img 
-            src={tourishLogo} 
-            alt="Tourish Logo" 
-            style={{ 
-              width: '200px', 
-              height: 'auto', 
-              marginBottom: '24px',
-              display: 'block',
-              marginLeft: 'auto',
-              marginRight: 'auto'
-            }} 
-          />
-          <h2 style={{ margin: '0 0 8px 0', fontSize: '24px' }}>TOURISH AI ASSISTANT</h2>
-          <p style={{ color: '#6b7280', margin: 0 }}>Sign in to continue</p>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-              Username
-            </label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '2px solid #e5e7eb',
-                borderRadius: '8px',
-                fontSize: '14px'
-              }}
+        <div style={{
+          width: '100%',
+          maxWidth: '480px',
+          background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+          padding: '48px',
+          borderRadius: '16px',
+          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)',
+          border: '1px solid #bae6fd'
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+            <img 
+              src={tourishLogo} 
+              alt="Tourish Logo" 
+              style={{ 
+                width: '200px', 
+                height: 'auto', 
+                marginBottom: '32px',
+                display: 'block',
+                marginLeft: 'auto',
+                marginRight: 'auto'
+              }} 
             />
-          </div>
-
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '2px solid #e5e7eb',
-                borderRadius: '8px',
-                fontSize: '14px'
-              }}
-            />
-          </div>
-
-          {error && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '12px',
-              background: '#fef2f2',
-              border: '1px solid #fecaca',
-              borderRadius: '8px',
-              color: '#dc2626',
-              marginBottom: '20px'
+            <h2 style={{ 
+              margin: '0 0 12px 0', 
+              fontSize: '28px',
+              color: '#1f2937',
+              fontWeight: '700',
+              letterSpacing: '0.5px'
             }}>
-              <AlertCircle size={18} />
-              <span>{error}</span>
-            </div>
-          )}
+              TOURISH AI ASSISTANT
+            </h2>
+            <p style={{ color: '#6b7280', margin: 0, fontSize: '15px' }}>
+              Sign in to continue
+            </p>
+          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '14px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.6 : 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px'
-            }}
-          >
-            {loading ? (
-              <>
-                <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
-                Signing in...
-              </>
-            ) : (
-              <>
-                <LogIn size={20} />
-                Sign In
-              </>
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '8px', 
+                fontWeight: '600',
+                color: '#374151',
+                fontSize: '14px'
+              }}>
+                Username
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  transition: 'border-color 0.2s',
+                  outline: 'none'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+              />
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '8px', 
+                fontWeight: '600',
+                color: '#374151',
+                fontSize: '14px'
+              }}>
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  transition: 'border-color 0.2s',
+                  outline: 'none'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+              />
+            </div>
+
+            {error && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: '8px',
+                color: '#dc2626',
+                marginBottom: '24px',
+                fontSize: '14px'
+              }}>
+                <AlertCircle size={18} />
+                <span>{error}</span>
+              </div>
             )}
-          </button>
-        </form>
+
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '14px',
+                background: '#0c4a6e',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.6 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                transition: 'all 0.2s',
+                boxShadow: '0 4px 12px rgba(12, 74, 110, 0.3)'
+              }}
+              onMouseEnter={(e) => !loading && (e.target.style.background = '#075985')}
+              onMouseLeave={(e) => e.target.style.background = '#0c4a6e'}
+            >
+              {loading ? (
+                <>
+                  <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
+                  Signing in...
+                </>
+              ) : (
+                <>
+                  <LogIn size={20} />
+                  Sign In
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* Right Side - Banner Image */}
+      <div style={{
+        flex: '0 0 55%',
+        backgroundImage: `url(${loginBanner})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}>
       </div>
     </div>
   );

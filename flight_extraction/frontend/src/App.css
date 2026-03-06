@@ -5,7 +5,7 @@
 }
 
 .header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0c4a6e 0%, #075985 100%);
   color: white;
   padding: 2rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -30,6 +30,9 @@
   width: auto;
   object-fit: contain;
   filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.25));
+  background: white;
+  padding: 8px 16px;
+  border-radius: 8px;
 }
 
 .user-info {
@@ -147,8 +150,8 @@
 
 .textarea-input:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #0891b2;
+  box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
 }
 
 .divider {
@@ -178,7 +181,7 @@
 .submit-button {
   width: 100%;
   padding: 0.875rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -194,6 +197,7 @@
 
 .submit-button:hover:not(:disabled) {
   transform: translateY(-2px);
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
 }
 
 .submit-button:disabled {
@@ -307,7 +311,7 @@
 
 .reset-button {
   padding: 0.625rem 1.25rem;
-  background: #667eea;
+  background: #0891b2;
   color: white;
   border: none;
   border-radius: 8px;
@@ -317,7 +321,7 @@
 }
 
 .reset-button:hover {
-  background: #5568d3;
+  background: #0e7490;
 }
 
 .split-view {
