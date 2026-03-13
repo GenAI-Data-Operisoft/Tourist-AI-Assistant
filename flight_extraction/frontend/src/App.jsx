@@ -79,10 +79,18 @@ function App() {
   // Helper function to upload file using pre-signed URL
   const uploadFileToS3 = async (file) => {
     // Step 1: Get pre-signed URL
-    const urlResponse = await axios.post(`${API_BASE}/generate-upload-url`, {
-      filename: file.name,
-      content_type: file.type
-    });
+    const urlResponse = await axios.post(
+  `${API_BASE}/generate-upload-url`,
+  {
+    filename: file.name,
+    content_type: file.type
+  },
+  {
+    headers: {
+      "x-api-key": import.meta.env.VITE_API_KEY
+    }
+  }
+);
 
     const { upload_url, fields, s3_url, bucket, key, original_filename } = urlResponse.data;
 
@@ -180,9 +188,18 @@ function App() {
         message: `Processing ${allS3Urls.length} file(s)...`
       });
 
-      const response = await axios.post(`${API_BASE}/extract/s3`, {
-        s3_urls: allS3Urls
-      });
+      const response = await axios.post(
+  `${API_BASE}/extract/s3`,
+  {
+    s3_urls: allS3Urls
+  },
+  {
+    headers: {
+      "x-api-key": import.meta.env.VITE_API_KEY,
+      "Content-Type": "application/json"
+    }
+  }
+);
 
       setResults(response.data.results);
       
